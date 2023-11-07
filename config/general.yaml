@@ -1,0 +1,20 @@
+# basic env args
+data: "data"
+dataset_cache: "data/cache"
+rebuild_dataset: no
+
+# task specific args
+task: "mnli"
+tfmr: "roberta-base"
+
+# training args
+lr: 1e-5
+batch_size: 16
+
+# Model Config
+n_layers: None 
+hidden_d: None 
+model_d: None
+
+
+#random args
