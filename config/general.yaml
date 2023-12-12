@@ -5,7 +5,7 @@ rebuild_dataset: no
 
 # task specific args
 task: "mnli"
-tfmr: "roberta-base"
+tfmr: "bert-base-uncased"
 
 # training args
 lr: 1e-5

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import typing
+from typing_extensions import Self
 from typing import Optional, Tuple
 import os 
 from os import path 
@@ -141,6 +142,12 @@ class TaskModel(nn.Module):
                       hidden_d:int, 
                       model_d:int) -> PretrainedConfig:
         raise NotImplementedError
+    def save(self, fpath: str) -> Self:
+        """
+        saves to huggingface-save_pretrained path
+        """
+        self.tfmr.save_pretrained(fpath)
+        torch.save(self.head.state_dict(), path.join(fpath, "taskhead.pt"))
 
 class RobertaTaskModel(TaskModel):
     def __init__(self, *args, **kwargs):
