@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List, Tuple, Dict, Optional
+from typing import Any, List, Tuple, Dict, Optional, Union
 from typing_extensions import Self
 import os 
 from os import path
@@ -34,7 +34,7 @@ class DatasetBase(Dataset):
         raise NotImplementedError("rebuild not implemented")
     def cleanup(self):
         raise NotImplementedError
-    def get_train_test_split():
+    def get_train_test_split(tokenizer: PreTrainedTokenizer) ->  Tuple[Self, Optional[Self], Optional[Self]]:
         raise NotImplementedError
     def collate_fn(self):
         raise NotImplementedError
@@ -56,6 +56,14 @@ class Batch:
     attention_mask: Optional[torch.Tensor] = None, 
     labels: Optional[torch.Tensor] = None, 
     decoder_attention_mask: Optional[torch.Tensor]= None
+
+    def to(self, device: Union[torch.DeviceObjType, str]) -> Self:
+        self.input_ids = self.input_ids.to(device) if self.input_ids is not None else None 
+        self.attention_mask = self.attention_mask.to(device) if self.attention_mask is not None else None 
+        self.labels = self.labels.to(device) if self.labels is not None else None 
+        self.decoder_attention_mask = self.decoder_attention_mask.to(device) if self.decoder_attention_mask is not None else None
+        return self
+
 
 
 
@@ -128,7 +136,7 @@ class MNLI(DatasetBase, MultiNLITask):
         self.split = split
         return self
     
-    def get_train_test_split(tokenizer: PreTrainedTokenizer) -> Tuple[Self, Self, Self]:
+    def get_train_test_split(tokenizer: PreTrainedTokenizer) -> Tuple[Self, Optional[Self], Optional[Self]]:
         train = MNLI(tokenizer, split="train", load_full_data=True)
         val = MNLI(tokenizer, split="val", load_full_data=False)
         test = MNLI(tokenizer, split="test", load_full_data=False)
@@ -230,7 +238,7 @@ class DART(DatasetBase):
         legacy_args["tokenizer"] = self.tokenizer         
         legacy_args["data_dir"] = self.dataset_path
         legacy_args["type_path"] = self.split
-        legacy_args["max_source_length"] = 384
+        legacy_args["max_source_length"] = 256
         legacy_args["max_target_length"] = 150
         legacy_args["prefix"] = ""
         self.dataset = LegacySeq2SeqDataset(**legacy_args)
@@ -256,7 +264,7 @@ class DART(DatasetBase):
         self.split = split
         return self
     
-    def get_train_test_split(tokenizer: PreTrainedTokenizer) -> Tuple[Self, Self, Self]:
+    def get_train_test_split(tokenizer: PreTrainedTokenizer) -> Tuple[Self, Optional[Self], Optional[Self]]:
         train = DART(tokenizer, split="train", load_full_data=True)
         val = DART(tokenizer, split="val", load_full_data=False)
         test = DART(tokenizer, split="test", load_full_data=False)

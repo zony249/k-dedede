@@ -19,9 +19,11 @@ from k_dedede.env import Env
 
 @dataclass
 class TransformerOutputs:
-    logits: torch.Tensor = None 
-    attentions: Tuple[torch.Tensor] = None
-    hidden_states: Tuple[torch.Tensor] = None
+    logits: Optional[torch.Tensor] = None 
+    attentions: Optional[Tuple[torch.Tensor]] = None
+    hidden_states: Optional[Tuple[torch.Tensor]] = None
+    decoder_attentions: Optional[Tuple[torch.Tensor]] = None
+    decoder_hidden_states: Optional[Tuple[torch.Tensor]] = None
 class TaskArgs:
     def __init__(self, **kwargs):
         [setattr(self, k, kwargs[k]) for k in kwargs]
@@ -131,7 +133,7 @@ class ClassificationHead(TaskHead):
 ################################################ 
 
 class TaskModel(nn.Module):
-    def __init__(self, tfmr: PreTrainedModel, head: TaskHead):
+    def __init__(self, tfmr: PreTrainedModel, head: Optional[TaskHead] = None):
         super().__init__()
         self.tfmr = tfmr
         self.head = head
@@ -147,13 +149,32 @@ class TaskModel(nn.Module):
         saves to huggingface-save_pretrained path
         """
         self.tfmr.save_pretrained(fpath)
-        torch.save(self.head.state_dict(), path.join(fpath, "taskhead.pt"))
+        if self.head is not None:
+            torch.save(self.head.state_dict(), path.join(fpath, "taskhead.pt"))
+        return self
+
+    def load(self, 
+             fpath: str, 
+             specific_checkpoint: Optional[str] = None) -> Self:
+        """
+        loads from huggingface path. There must be a taskhead.pt present  
+        specific_checkpoint: in case you want to load something 
+            other than pytorch_model.bin
+        """
+        self.tfmr = self.tfmr.from_pretrained(fpath)
+        try:
+            self.head.load_state_dict(torch.load(path.join(fpath, "taskhead.pt")))
+        except:
+            self.head = None
+        if specific_checkpoint is not None:
+            self.tfmr.load_state_dict(torch.load(fpath, specific_checkpoint))
+        return self
 
 class RobertaTaskModel(TaskModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs) 
         assert "roberta" in self.tfmr.config._name_or_path , "You must import a RoBERTa model"
-    # TODO
+
     def forward(self, *args, **kwargs) -> TransformerOutputs:
         outputs = self.tfmr(*args, **kwargs)
         logits = self.head(outputs.last_hidden_state)
@@ -175,8 +196,28 @@ class RobertaTaskModel(TaskModel):
             config.intermediate_size = model_d
         return config
 
-
-
+class BartTaskModel(TaskModel):
+    def __init__(self, *args, **kwargs): 
+        super().__init__(*args, **kwargs) 
+        assert "bart" in self.tfmr.config._name_or_path, "You must import a BART model"
+    
+    def forward(self, *args, **kwargs) -> TransformerOutputs:
+        outputs = self.tfmr(*args, **kwargs)
+        tfmr_outputs = TransformerOutputs(
+            logits=outputs.logits, # [B, S, C]
+            hidden_states=outputs.encoder_hidden_states, 
+            attentions=outputs.encoder_attentions, 
+            decoder_hidden_states=outputs.decoder_hidden_states, 
+            decoder_attentions=outputs.decoder_attentions, 
+        )
+        return tfmr_outputs
+    
+    def generate(self, *args, **kwargs):
+        return self.tfmr.generate(*args, **kwargs)
+    
+    def update_config(config: PretrainedConfig, n_layers: int, hidden_d: int, model_d: int) -> PretrainedConfig:
+        return super().update_config(n_layers, hidden_d, model_d)
+        
 
 
 if __name__ == "__main__": 

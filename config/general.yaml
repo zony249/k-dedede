@@ -2,14 +2,21 @@
 data: "data"
 dataset_cache: "data/cache"
 rebuild_dataset: no
+output_dir: "runs"
+exp_name: "bart-large-dart-teacher"
+device: "cuda"
 
 # task specific args
-task: "mnli"
-tfmr: "bert-base-uncased"
+task: "dart"
+tfmr: "facebook/bart-large"
 
 # training args
 lr: 1e-5
 batch_size: 16
+epochs: 100
+optimizer: "adamw"
+scheduler: null
+eval_every_steps: 1500
 
 # Model Config
 n_layers: None 

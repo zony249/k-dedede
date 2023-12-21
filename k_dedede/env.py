@@ -11,6 +11,9 @@ class Env:
     data = "./data/"
     dataset_cache = "./data/cache/"
     rebuild_dataset = False
+    output_dir = "runs"
+    exp_name = None
+    device = "cpu"
 
     # task args
     task = None 
@@ -19,6 +22,10 @@ class Env:
     # training args
     lr = 1e-5    
     batch_size = 16
+    epochs = 1
+    optimizer = "adamw"
+    scheduler = None
+    eval_every_steps = 500
 
     # model config
     n_layers = None 
